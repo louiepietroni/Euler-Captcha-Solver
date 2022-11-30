@@ -11,7 +11,7 @@ training_data = [line.strip() for line in training_data]
 training_labels = np.array([line[-1] for line in training_data]).astype(np.float32)
 training_digits = np.array([np.fromstring(line[1:-2], dtype=int, sep=',').astype(np.float32) for line in training_data])
 
-print(training_labels.shape)
+# print(training_labels.shape)
 # print(training_digits.shape)
 
 knn = cv2.ml.KNearest_create()
