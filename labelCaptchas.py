@@ -51,19 +51,25 @@ while True:
     digits = captchautils.get_digits_from_captcha(captcha, show=True)
     prepped_digits = [captchautils.scale_and_grey_digit(digit) for digit in digits]
 
-    # Get the user to label the captcha, then take the corresponding step
+    # Get the user to label the captcha, (eg. 74395) although there are a few special commands too
     answer = input("Enter Captcha value:")
     if answer == 'skip':
+        # Skip will ignore this captcha and move on (eg. digits recognised incorrectly)
         print('Skipping this captcha')
         continue
     elif answer == 'undo':
+        # Undo will remove the previous captchas digits from the file and ignore this captcha
+        # Eg you realise you entered the previous captcha incorrectly
         remove_digits_from_file()
         print('Removing last Captcha digits from file')
         continue
     elif answer == 'len':
+        # Gets the number of digits currently in the training data
         get_digits_in_file()
         continue
     elif len(answer) == 5:
+        # If the answer is 5 digits, take as a label and save
         save_digits_to_file(prepped_digits, answer)
     else:
+        # Otherwise just end the training data collection
         break

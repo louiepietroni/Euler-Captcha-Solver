@@ -172,3 +172,38 @@ def get_scaled_image(image, scale):
     # Resize the image, passing in (width, height)
     scaled_image = cv2.resize(image, (new_size[1], new_size[0]))
     return scaled_image
+
+
+def trained_knn_model():
+    """
+    Creates and trains a KNN model from the training data
+    :return: The trained model
+    """
+    # Open and read the training data
+    training_file = open('training.txt')
+    training_data = training_file.readlines()
+    training_file.close()
+    training_data = [line.strip() for line in training_data]
+
+    # Save the labels as the last character of each line and the rest is the array for the data
+    training_labels = np.array([line[-1] for line in training_data]).astype(np.float32)
+    training_digits = np.array([np.fromstring(line[1:-2], dtype=int, sep=',').astype(np.float32) for line in training_data])
+
+    # Create a KNN model and train using the loaded training digits and labels
+    knn_model = cv2.ml.KNearest_create()
+    knn_model.train(training_digits, cv2.ml.ROW_SAMPLE, training_labels)
+    return knn_model
+
+
+def predict_digits(knn_model, digits):
+    """
+    Passes the digits through the model and returns the prediction
+    :param knn_model: The trained model to pass the digits through
+    :param digits: The prepped digits to pass through the model
+    :return: A string representing the prediction for the digits
+    """
+    # Pass the digits through the KNN model
+    ret, result, neighbours, dist = knn_model.findNearest(digits, k=15)
+    # Format the result as a string
+    result = ''.join([str(int(digit)) for digit in list(result.flatten())])
+    return result
