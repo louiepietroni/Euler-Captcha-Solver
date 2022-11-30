@@ -4,7 +4,14 @@ import requests
 import shutil
 
 
-def get_digits_from_captcha(image, show=False, scale=3, checkarea=True):
+def get_digits_from_captcha(image, show=False, scale=3):
+    """
+    Takes a captcha and returns the individual digits
+    :param image: The captcha as requested from online
+    :param show: Optional argument to show the Captcha with identified digits boxed
+    :param scale: Optional argument for the scale of the shown image
+    :return: List of the images of the 5 individual digits
+    """
     # Convert the image to HSV and take the h values, which we'll use to distinguish the digits
     image_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     h, _, _ = cv2.split(image_hsv)
@@ -58,10 +65,9 @@ def get_digits_from_captcha(image, show=False, scale=3, checkarea=True):
         # print('num', len(contours))
         for i, contour in enumerate(contours):
             area = cv2.contourArea(contour)
-            if area < 3 and checkarea:
+            if area < 3:
                 continue
-            # print('Area', i, area)
-            # For each contour, get its bounding box and store the extremities
+
             bbox = cv2.boundingRect(contour)
             min_xs.append(bbox[0])
             min_ys.append(bbox[1])
@@ -101,6 +107,11 @@ def get_digits_from_captcha(image, show=False, scale=3, checkarea=True):
 
 
 def scale_and_grey_digit(digit):
+    """
+    Takes in a colour digits and resizes it, pads it and makes it black and white
+    :param digit: An image of the digit
+    :return: The digit as a 20x20 black and white image
+    """
     # Convert the image to grayscale, then to black and white
     gray_digit = cv2.cvtColor(digit, cv2.COLOR_BGR2GRAY)
     _, black_white_image = cv2.threshold(gray_digit, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
@@ -124,6 +135,7 @@ def scale_and_grey_digit(digit):
     t, b = delta_h // 2, delta_h - (delta_h // 2)
     l, r = delta_w // 2, delta_w - (delta_w // 2)
 
+    # Pad the digit so it is 20x20
     color = [0, 0, 0]
     resized_black_white_image = cv2.copyMakeBorder(black_white_image, t, b, l, r, cv2.BORDER_CONSTANT, value=color)
 
@@ -131,6 +143,10 @@ def scale_and_grey_digit(digit):
 
 
 def get_new_captcha():
+    """
+    Get a new captcha from the internet and return its image
+    :return: A new captcha
+    """
     url = 'https://projecteuler.net/captcha/show_captcha.php'
     res = requests.get(url, stream=True)
 
@@ -144,6 +160,12 @@ def get_new_captcha():
 
 
 def get_scaled_image(image, scale):
+    """
+    Takes an image and returns a scaled version (for displaying)
+    :param image: The image to be enlarged
+    :param scale: The scale by which to resize the image
+    :return: The resized image
+    """
     old_size = image.shape[:2]
     new_size = tuple([int(x * scale) for x in old_size])
 
