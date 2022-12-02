@@ -4,12 +4,13 @@ import requests
 import shutil
 
 
-def get_digits_from_captcha(image, show=False, scale=3):
+def get_digits_from_captcha(image, show=False, scale=3, showDigits=True):
     """
     Takes a captcha and returns the individual digits
     :param image: The captcha as requested from online
     :param show: Optional argument to show the Captcha with identified digits boxed
     :param scale: Optional argument for the scale of the shown image
+    :param scale: Optional argument for if show=True, whether to show individual digits too
     :return: List of the images of the 5 individual digits
     """
     # Convert the image to HSV and take the h values, which we'll use to distinguish the digits
@@ -100,8 +101,25 @@ def get_digits_from_captcha(image, show=False, scale=3):
     digits = [region for region, start in digits]
 
     if show:
-        cv2.imshow('Digits marked', get_scaled_image(overall, scale))
-        cv2.waitKey(5)
+        if not showDigits:
+            cv2.imshow('Digits marked', get_scaled_image(overall, scale))
+            cv2.waitKey(5)
+        else:
+            prepped = [scale_and_grey_digit(digit) for digit in digits]# + [np.zeros((20, 136 - 20*len(digits)))]
+            prepped_image = np.hstack(prepped).astype(np.uint8)
+            boxed_digits = overall.copy()
+            overall_width = boxed_digits.shape[1]
+            prepped_width = prepped_image.shape[1]
+            if overall_width > prepped_width:
+                prepped_height = prepped_image.shape[0]
+                prepped_image = np.hstack([prepped_image, np.zeros((prepped_height, 136 - prepped_height*len(digits)))]).astype(np.uint8)
+            else:
+                prepped_height = prepped_image.shape[0]
+                boxed_digits = np.hstack([boxed_digits, np.zeros((68, prepped_height*len(digits) - 136, 3))]).astype(np.uint8)
+            prepped_image = cv2.cvtColor(prepped_image, cv2.COLOR_GRAY2BGR)
+            original_and_digits = np.concatenate((boxed_digits, prepped_image), axis=0)
+            cv2.imshow('Digits marked', get_scaled_image(original_and_digits, scale))
+            cv2.waitKey(5)
 
     return digits
 
@@ -151,7 +169,7 @@ def get_new_captcha():
     res = requests.get(url, stream=True)
 
     if res.status_code != 200:
-        print('Failed to fetch image')
+        print('Failed to fetch image, status code:', str(res.status_code))
     else:
         with open('new_captcha.png', 'wb') as f:
             shutil.copyfileobj(res.raw, f)
@@ -195,7 +213,7 @@ def trained_knn_model():
     return knn_model
 
 
-def predict_digits(knn_model, digits):
+def predict_knn(knn_model, digits):
     """
     Passes the digits through the model and returns the prediction
     :param knn_model: The trained model to pass the digits through
@@ -207,3 +225,61 @@ def predict_digits(knn_model, digits):
     # Format the result as a string
     result = ''.join([str(int(digit)) for digit in list(result.flatten())])
     return result
+
+
+def trained_svm_model():
+    """
+    Creates and trains a SVM model from the training data
+    :return: The trained model
+    """
+    # Open and read the training data
+    training_file = open('training.txt')
+    training_data = training_file.readlines()
+    training_file.close()
+    training_data = [line.strip() for line in training_data]
+
+    # Save the labels as the last character of each line and the rest is the array for the data
+    training_labels = np.array([line[-1] for line in training_data]).astype(np.float32)
+    training_digits = np.array([np.fromstring(line[1:-2], dtype=int, sep=',').astype(np.float32) for line in training_data])
+
+    # Create a SVM model and train using the loaded training digits and labels
+    svm_model = cv2.ml.SVM()
+    svm_model.trainAuto(training_digits, training_labels)
+    return svm_model
+
+
+def predict_svm(svm_model, digits):
+    """
+    Passes the digits through the model and returns the prediction
+    :param svm_model: The trained model to pass the digits through
+    :param digits: The prepped digits to pass through the model
+    :return: A string representing the prediction for the digits
+    """
+    # Pass the digits through the SVM model
+    ret, result, neighbours, dist = svm_model.predict(digits, k=15)
+    # Format the result as a string
+    result = ''.join([str(int(digit)) for digit in list(result.flatten())])
+    return result
+
+
+def show_training_digits():
+    """
+    A testing function to show the training digits which we have
+    :return: None
+    """
+    training_file = open('training.txt')
+    training_data = training_file.readlines()
+    training_file.close()
+    training_data = [line.strip() for line in training_data]
+
+    # Save the labels as the last character of each line and the rest is the array for the data
+    training_labels = np.array([line[-1] for line in training_data]).astype(np.float32)
+    training_digits = np.array([np.fromstring(line[1:-2], dtype=int, sep=',').astype(np.float32) for line in training_data])
+    print(training_digits.shape)
+    display_digits = training_digits.reshape(training_digits.shape[0], 20, 20)
+    for ind, digit in enumerate(display_digits):
+        title = 'Digit: ' + str(int(training_labels[ind]))
+        cv2.imshow(title, digit)
+        cv2.waitKey(0)
+
+
