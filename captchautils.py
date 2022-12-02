@@ -4,13 +4,14 @@ import requests
 import shutil
 
 
-def get_digits_from_captcha(image, show=False, scale=3, showDigits=True):
+def get_digits_from_captcha(image, show=False, scale=3, showDigits=True, debug=False):
     """
     Takes a captcha and returns the individual digits
     :param image: The captcha as requested from online
     :param show: Optional argument to show the Captcha with identified digits boxed
     :param scale: Optional argument for the scale of the shown image
     :param scale: Optional argument for if show=True, whether to show individual digits too
+    :param debug: Optional argument for showing areas detected for each individual hue
     :return: List of the images of the 5 individual digits
     """
     # Convert the image to HSV and take the h values, which we'll use to distinguish the digits
@@ -63,17 +64,26 @@ def get_digits_from_captcha(image, show=False, scale=3, showDigits=True):
         min_ys = []
         max_xs = []
         max_ys = []
+
+        hue_boxes = image.copy()
         # print('num', len(contours))
         for i, contour in enumerate(contours):
             area = cv2.contourArea(contour)
+            print('Area for hue:', peak_hue, ':', i, ':', area)
             if area < 3:
                 continue
 
             bbox = cv2.boundingRect(contour)
+
+            cv2.rectangle(hue_boxes, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (0, 0, 0), 1)
+
             min_xs.append(bbox[0])
             min_ys.append(bbox[1])
             max_xs.append(bbox[0] + bbox[2])
             max_ys.append(bbox[1] + bbox[3])
+
+        cv2.imshow('Hue boxes', get_scaled_image(hue_boxes, 3))
+        cv2.waitKey(0)
 
         if len(min_xs) == 0 or len(min_ys) == 0 or len(max_xs) == 0 or len(max_ys) == 0:
             continue

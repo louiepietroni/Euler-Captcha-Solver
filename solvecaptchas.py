@@ -11,7 +11,7 @@ while True:
     new_captcha = captchautils.get_new_captcha()
 
     # Get and prep the individual digits of the captcha and show the captcha too
-    digits = captchautils.get_digits_from_captcha(new_captcha, show=True)
+    digits = captchautils.get_digits_from_captcha(new_captcha, show=True, debug=True)
     prepped_digits = np.array([captchautils.scale_and_grey_digit(digit) for digit in digits])
     size = prepped_digits[0].shape[0]
 
